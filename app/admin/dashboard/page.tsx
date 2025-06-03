@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -27,17 +30,130 @@ import {
   Ticket,
   Users,
   Truck,
-  BarChart4
+  BarChart4,
+  Image as ImageIcon,
+  MapPin
 } from "lucide-react";
 
 import { dummyProducts, dummyStores, dummyCouriers, dummyCategories, dummyOffers } from "@/lib/dummy-data";
 import Link from "next/link";
+import { toast } from "sonner";
+
+interface CreateDialogProps {
+  type: 'product' | 'category' | 'store' | 'offer';
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: any) => void;
+}
+
+function CreateDialog({ type, open, onOpenChange, onSubmit }: CreateDialogProps) {
+  const [formData, setFormData] = useState<any>({});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+    setFormData({});
+  };
+
+  const dialogContent = {
+    product: {
+      title: "Nuevo Producto",
+      fields: [
+        { name: "name", label: "Nombre", type: "text" },
+        { name: "price", label: "Precio", type: "number" },
+        { name: "description", label: "Descripción", type: "textarea" },
+        { name: "category", label: "Categoría", type: "select", options: dummyCategories },
+        { name: "image", label: "URL de la imagen", type: "text" }
+      ]
+    },
+    category: {
+      title: "Nueva Categoría",
+      fields: [
+        { name: "name", label: "Nombre", type: "text" },
+        { name: "image", label: "URL de la imagen", type: "text" }
+      ]
+    },
+    store: {
+      title: "Nueva Tienda",
+      fields: [
+        { name: "name", label: "Nombre", type: "text" },
+        { name: "address", label: "Dirección", type: "text" },
+        { name: "image", label: "URL de la imagen", type: "text" },
+        { name: "lat", label: "Latitud", type: "number" },
+        { name: "lng", label: "Longitud", type: "number" }
+      ]
+    },
+    offer: {
+      title: "Nueva Oferta",
+      fields: [
+        { name: "title", label: "Título", type: "text" },
+        { name: "description", label: "Descripción", type: "textarea" },
+        { name: "discount", label: "Descuento (%)", type: "number" },
+        { name: "validUntil", label: "Válido hasta", type: "date" },
+        { name: "image", label: "URL de la imagen", type: "text" }
+      ]
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>{dialogContent[type].title}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {dialogContent[type].fields.map((field) => (
+            <div key={field.name} className="space-y-2">
+              <Label htmlFor={field.name}>{field.label}</Label>
+              {field.type === "textarea" ? (
+                <Textarea
+                  id={field.name}
+                  value={formData[field.name] || ""}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                />
+              ) : field.type === "select" ? (
+                <Select
+                  value={formData[field.name]}
+                  onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options.map((option: any) => (
+                      <SelectItem key={option.id} value={option.name}>
+                        {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id={field.name}
+                  type={field.type}
+                  value={formData[field.name] || ""}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                />
+              )}
+            </div>
+          ))}
+          <DialogFooter>
+            <Button type="submit">Crear {dialogContent[type].title.split(" ")[1]}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
+  const [createDialog, setCreateDialog] = useState<{
+    type: 'product' | 'category' | 'store' | 'offer' | null;
+    open: boolean;
+  }>({ type: null, open: false });
 
-  // Update activeTab when URL parameters change
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab) {
@@ -45,12 +161,20 @@ export default function AdminDashboard() {
     }
   }, [searchParams]);
 
+  const handleCreate = (data: any) => {
+    if (!createDialog.type) return;
+    
+    // Here you would typically make an API call to create the item
+    console.log('Creating new', createDialog.type, data);
+    toast.success(`${createDialog.type} creado exitosamente`);
+    setCreateDialog({ type: null, open: false });
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <PageHeader
         title="Panel de Administración"
         description="Gestiona productos, tiendas, ofertas y mensajeros"
-        action={<Button size="sm">Nueva Entrada</Button>}
       />
       
       <Tabs 
@@ -195,7 +319,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Productos</CardTitle>
-              <Button size="sm" className="flex items-center gap-1">
+              <Button 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setCreateDialog({ type: 'product', open: true })}
+              >
                 <Plus className="h-4 w-4" /> Nuevo Producto
               </Button>
             </CardHeader>
@@ -261,7 +389,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Categorías</CardTitle>
-              <Button size="sm" className="flex items-center gap-1">
+              <Button 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setCreateDialog({ type: 'category', open: true })}
+              >
                 <Plus className="h-4 w-4" /> Nueva Categoría
               </Button>
             </CardHeader>
@@ -303,7 +435,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tiendas</CardTitle>
-              <Button size="sm" className="flex items-center gap-1">
+              <Button 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setCreateDialog({ type: 'store', open: true })}
+              >
                 <Plus className="h-4 w-4" /> Nueva Tienda
               </Button>
             </CardHeader>
@@ -396,7 +532,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Ofertas</CardTitle>
-              <Button size="sm" className="flex items-center gap-1">
+              <Button 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => setCreateDialog({ type: 'offer', open: true })}
+              >
                 <Plus className="h-4 w-4" /> Nueva Oferta
               </Button>
             </CardHeader>
@@ -444,6 +584,15 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {createDialog.type && (
+        <CreateDialog
+          type={createDialog.type}
+          open={createDialog.open}
+          onOpenChange={(open) => setCreateDialog({ type: null, open })}
+          onSubmit={handleCreate}
+        />
+      )}
     </div>
   );
 }
