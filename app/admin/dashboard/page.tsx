@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/common/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,16 @@ import { dummyProducts, dummyStores, dummyCouriers, dummyCategories, dummyOffers
 import Link from "next/link";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
+
+  // Update activeTab when URL parameters change
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -82,25 +92,25 @@ export default function AdminDashboard() {
               title="Productos" 
               value={dummyProducts.length} 
               icon={<ShoppingBag className="h-5 w-5" />}
-              href="/admin/productos"
+              href="/admin/dashboard?tab=products"
             />
             <AdminOverviewCard 
               title="Categorías" 
               value={dummyCategories.length} 
               icon={<Tag className="h-5 w-5" />}
-              href="/admin/categorias"
+              href="/admin/dashboard?tab=categories"
             />
             <AdminOverviewCard 
               title="Tiendas" 
               value={dummyStores.length} 
               icon={<Store className="h-5 w-5" />}
-              href="/admin/tiendas"
+              href="/admin/dashboard?tab=stores"
             />
             <AdminOverviewCard 
               title="Mensajeros" 
               value={dummyCouriers.length} 
               icon={<Truck className="h-5 w-5" />}
-              href="/admin/mensajeros"
+              href="/admin/dashboard?tab=couriers"
             />
           </div>
           
